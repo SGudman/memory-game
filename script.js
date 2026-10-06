@@ -17,6 +17,9 @@ let gameCards = [];
 let firstCard = null;
 let movesCount = 0;
 let foundPairs = 0;
+let mismatchLocked = false;
+let mismatchTimer = null;
+let currentGameId = 0;
 let gameFinished = false;
 
 function createElement(tagName, classNames, text) {
@@ -49,7 +52,8 @@ function createShuffledCards() {
         image: animals[animalIndex].image,
         isOpen: false,
         isMatched: false,
-        button: null
+        button: null,
+        gameId: currentGameId
       });
     }
   }
@@ -119,12 +123,16 @@ function updateStats() {
 function updateInteractionAvailability() {
   for (let index = 0; index < gameCards.length; index += 1) {
     const card = gameCards[index];
-    card.button.disabled = gameFinished || card.isOpen || card.isMatched;
+    card.button.disabled = mismatchLocked || gameFinished || card.isOpen || card.isMatched;
   }
 }
 
 function handleCardSelection(card) {
-  if (gameFinished || card.isOpen || card.isMatched) {
+  if (mismatchLocked || gameFinished || card.isOpen || card.isMatched) {
+    return;
+  }
+
+  if (card.gameId !== currentGameId) {
     return;
   }
 
@@ -140,12 +148,12 @@ function handleCardSelection(card) {
   movesCount += 1;
   updateStats();
   const previousCard = firstCard;
-  firstCard = null;
 
   if (previousCard.name === card.name) {
     previousCard.isMatched = true;
     card.isMatched = true;
     foundPairs += 1;
+    firstCard = null;
     updateCardPresentation(previousCard);
     updateCardPresentation(card);
     updateStats();
@@ -158,14 +166,37 @@ function handleCardSelection(card) {
     return;
   }
 
-  previousCard.isOpen = false;
-  card.isOpen = false;
-  updateCardPresentation(previousCard);
-  updateCardPresentation(card);
+  mismatchLocked = true;
+  firstCard = null;
+  const mismatchGameId = currentGameId;
+  const mismatchedFirstCard = previousCard;
+  const mismatchedSecondCard = card;
+
+  mismatchTimer = setTimeout(function () {
+    if (mismatchGameId !== currentGameId) {
+      return;
+    }
+
+    mismatchedFirstCard.isOpen = false;
+    mismatchedSecondCard.isOpen = false;
+    updateCardPresentation(mismatchedFirstCard);
+    updateCardPresentation(mismatchedSecondCard);
+    mismatchLocked = false;
+    mismatchTimer = null;
+    updateInteractionAvailability();
+  }, 1000);
+
   updateInteractionAvailability();
 }
 
 function startNewGame() {
+  if (mismatchTimer !== null) {
+    clearTimeout(mismatchTimer);
+  }
+
+  mismatchTimer = null;
+  currentGameId += 1;
+  mismatchLocked = false;
   firstCard = null;
   gameFinished = false;
   movesCount = 0;
