@@ -9,10 +9,17 @@ const animals = [
   { name: "Медведь", image: "assets/animals/bear.svg" }
 ];
 
+let gameRoot;
 let newGameButton;
+let leaderboardButton;
 let movesCountElement;
 let pairsCountElement;
 let gameBoard;
+let modalBackdrop;
+let modalPanel;
+let modalTitle;
+let modalContent;
+let modalActions;
 let gameCards = [];
 let firstCard = null;
 let movesCount = 0;
@@ -21,6 +28,7 @@ let mismatchLocked = false;
 let mismatchTimer = null;
 let currentGameId = 0;
 let gameFinished = false;
+let modalOpen = false;
 
 function createElement(tagName, classNames, text) {
   const element = document.createElement(tagName);
@@ -70,17 +78,18 @@ function createShuffledCards() {
 
 function createCardButton(card) {
   const button = createElement("button", "card");
+  button.type = "button";
+  button.setAttribute("aria-label", "Закрытая карточка");
+
   const back = createElement("span", "card-back", "?");
   const face = createElement("span", "card-face");
   const image = createElement("img", "card-image");
-
-  button.type = "button";
-  button.setAttribute("aria-label", "Закрытая карточка");
   image.src = card.image;
   image.alt = card.name;
   face.append(image);
   button.append(back, face);
   card.button = button;
+
   button.addEventListener("click", function () {
     handleCardSelection(card);
   });
@@ -121,14 +130,17 @@ function updateStats() {
 }
 
 function updateInteractionAvailability() {
+  newGameButton.disabled = modalOpen;
+  leaderboardButton.disabled = modalOpen;
+
   for (let index = 0; index < gameCards.length; index += 1) {
     const card = gameCards[index];
-    card.button.disabled = mismatchLocked || gameFinished || card.isOpen || card.isMatched;
+    card.button.disabled = modalOpen || mismatchLocked || gameFinished || card.isOpen || card.isMatched;
   }
 }
 
 function handleCardSelection(card) {
-  if (mismatchLocked || gameFinished || card.isOpen || card.isMatched) {
+  if (modalOpen || mismatchLocked || gameFinished || card.isOpen || card.isMatched) {
     return;
   }
 
@@ -160,9 +172,11 @@ function handleCardSelection(card) {
 
     if (foundPairs === animals.length) {
       gameFinished = true;
+      openVictoryModal();
+    } else {
+      updateInteractionAvailability();
     }
 
-    updateInteractionAvailability();
     return;
   }
 
@@ -201,41 +215,136 @@ function startNewGame() {
   gameFinished = false;
   movesCount = 0;
   foundPairs = 0;
+
+  if (modalOpen) {
+    closeModal();
+  }
+
   gameCards = createShuffledCards();
   renderCards();
   updateStats();
   updateInteractionAvailability();
 }
 
+function formatMoveWord(count) {
+  const lastTwoDigits = count % 100;
+  const lastDigit = count % 10;
+
+  if (lastTwoDigits >= 11 && lastTwoDigits <= 14) {
+    return "ходов";
+  }
+
+  if (lastDigit === 1) {
+    return "ход";
+  }
+
+  if (lastDigit >= 2 && lastDigit <= 4) {
+    return "хода";
+  }
+
+  return "ходов";
+}
+
+function createModalButton(label, secondary, handler) {
+  const classNames = secondary ? "button button-secondary" : "button";
+  const button = createElement("button", classNames, label);
+  button.type = "button";
+  button.addEventListener("click", handler);
+  return button;
+}
+
+function openModal(title, content, buttons) {
+  modalTitle.textContent = title;
+  modalContent.textContent = "";
+  modalActions.textContent = "";
+  modalContent.append(content);
+
+  for (let index = 0; index < buttons.length; index += 1) {
+    modalActions.append(buttons[index]);
+  }
+
+  modalOpen = true;
+  modalBackdrop.classList.add("is-open");
+  document.body.classList.add("modal-open");
+  updateInteractionAvailability();
+}
+
+function closeModal() {
+  if (!modalOpen) {
+    return;
+  }
+
+  modalOpen = false;
+  modalBackdrop.classList.remove("is-open");
+  document.body.classList.remove("modal-open");
+  modalContent.textContent = "";
+  modalActions.textContent = "";
+  updateInteractionAvailability();
+}
+
+function openVictoryModal() {
+  const message = "Вы нашли все пары за " + movesCount + " " + formatMoveWord(movesCount) + ".";
+  const content = createElement("p", "", message);
+  const restartButton = createModalButton("Новая игра", false, startNewGame);
+  const closeButton = createModalButton("Закрыть", true, closeModal);
+  openModal("Победа!", content, [restartButton, closeButton]);
+}
+
+function handleDocumentKeydown(event) {
+  if (modalOpen && event.key === "Escape") {
+    closeModal();
+  }
+}
+
 function buildInterface() {
-  const gameRoot = createElement("main", "game");
+  gameRoot = createElement("main", "game");
+
   const header = createElement("header", "game-header");
   const title = createElement("h1", "game-title", "Игра на память");
   const actions = createElement("div", "game-actions");
   newGameButton = createElement("button", "button", "Новая игра");
-  const leaderboardButton = createElement("button", "button button-secondary", "Таблица лидеров");
+  newGameButton.type = "button";
+  leaderboardButton = createElement("button", "button button-secondary", "Таблица лидеров");
+  leaderboardButton.type = "button";
+  newGameButton.addEventListener("click", startNewGame);
+  actions.append(newGameButton, leaderboardButton);
+  header.append(title, actions);
+
   const stats = createElement("section", "game-stats");
   const movesLabel = createElement("p", "", "Ходы: ");
   movesCountElement = createElement("span", "", "0");
+  movesCountElement.id = "moves-count";
+  movesLabel.append(movesCountElement);
   const pairsLabel = createElement("p", "", "Пары: ");
   pairsCountElement = createElement("span", "", "0");
-  const pairTotal = createElement("span", "", " из 8");
-  gameBoard = createElement("section", "game-board");
-
-  newGameButton.type = "button";
-  leaderboardButton.type = "button";
-  newGameButton.addEventListener("click", startNewGame);
-  movesCountElement.id = "moves-count";
   pairsCountElement.id = "pairs-count";
-  gameBoard.setAttribute("aria-label", "Игровое поле");
-
-  movesLabel.append(movesCountElement);
+  const pairTotal = createElement("span", "", " из 8");
   pairsLabel.append(pairsCountElement, pairTotal);
   stats.append(movesLabel, pairsLabel);
-  actions.append(newGameButton, leaderboardButton);
-  header.append(title, actions);
+
+  gameBoard = createElement("section", "game-board");
+  gameBoard.setAttribute("aria-label", "Игровое поле");
   gameRoot.append(header, stats, gameBoard);
-  document.body.append(gameRoot);
+
+  modalBackdrop = createElement("div", "modal-backdrop");
+  modalPanel = createElement("section", "modal-panel");
+  modalPanel.setAttribute("role", "dialog");
+  modalPanel.setAttribute("aria-modal", "true");
+  modalTitle = createElement("h2", "modal-title");
+  modalTitle.id = "modal-title";
+  modalPanel.setAttribute("aria-labelledby", "modal-title");
+  modalContent = createElement("div", "modal-content");
+  modalActions = createElement("div", "modal-actions");
+  modalPanel.append(modalTitle, modalContent, modalActions);
+  modalBackdrop.append(modalPanel);
+  modalBackdrop.addEventListener("click", function (event) {
+    if (event.target === modalBackdrop) {
+      closeModal();
+    }
+  });
+  document.addEventListener("keydown", handleDocumentKeydown);
+
+  document.body.append(gameRoot, modalBackdrop);
 }
 
 buildInterface();
