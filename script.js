@@ -14,8 +14,10 @@ let movesCountElement;
 let pairsCountElement;
 let gameBoard;
 let gameCards = [];
+let firstCard = null;
 let movesCount = 0;
 let foundPairs = 0;
+let gameFinished = false;
 
 function createElement(tagName, classNames, text) {
   const element = document.createElement(tagName);
@@ -44,7 +46,10 @@ function createShuffledCards() {
     for (let copyIndex = 0; copyIndex < 2; copyIndex += 1) {
       cards.push({
         name: animals[animalIndex].name,
-        image: animals[animalIndex].image
+        image: animals[animalIndex].image,
+        isOpen: false,
+        isMatched: false,
+        button: null
       });
     }
   }
@@ -71,6 +76,10 @@ function createCardButton(card) {
   image.alt = card.name;
   face.append(image);
   button.append(back, face);
+  card.button = button;
+  button.addEventListener("click", function () {
+    handleCardSelection(card);
+  });
 
   return button;
 }
@@ -83,17 +92,88 @@ function renderCards() {
   }
 }
 
+function updateCardPresentation(card) {
+  if (card.isOpen) {
+    card.button.classList.add("is-open");
+  } else {
+    card.button.classList.remove("is-open");
+  }
+
+  if (card.isMatched) {
+    card.button.classList.add("is-matched");
+    card.button.setAttribute("aria-label", "Найденная пара: " + card.name);
+  } else if (card.isOpen) {
+    card.button.classList.remove("is-matched");
+    card.button.setAttribute("aria-label", "Открытая карточка: " + card.name);
+  } else {
+    card.button.classList.remove("is-matched");
+    card.button.setAttribute("aria-label", "Закрытая карточка");
+  }
+}
+
 function updateStats() {
   movesCountElement.textContent = String(movesCount);
   pairsCountElement.textContent = String(foundPairs);
 }
 
+function updateInteractionAvailability() {
+  for (let index = 0; index < gameCards.length; index += 1) {
+    const card = gameCards[index];
+    card.button.disabled = gameFinished || card.isOpen || card.isMatched;
+  }
+}
+
+function handleCardSelection(card) {
+  if (gameFinished || card.isOpen || card.isMatched) {
+    return;
+  }
+
+  card.isOpen = true;
+  updateCardPresentation(card);
+
+  if (firstCard === null) {
+    firstCard = card;
+    updateInteractionAvailability();
+    return;
+  }
+
+  movesCount += 1;
+  updateStats();
+  const previousCard = firstCard;
+  firstCard = null;
+
+  if (previousCard.name === card.name) {
+    previousCard.isMatched = true;
+    card.isMatched = true;
+    foundPairs += 1;
+    updateCardPresentation(previousCard);
+    updateCardPresentation(card);
+    updateStats();
+
+    if (foundPairs === animals.length) {
+      gameFinished = true;
+    }
+
+    updateInteractionAvailability();
+    return;
+  }
+
+  previousCard.isOpen = false;
+  card.isOpen = false;
+  updateCardPresentation(previousCard);
+  updateCardPresentation(card);
+  updateInteractionAvailability();
+}
+
 function startNewGame() {
+  firstCard = null;
+  gameFinished = false;
   movesCount = 0;
   foundPairs = 0;
   gameCards = createShuffledCards();
   renderCards();
   updateStats();
+  updateInteractionAvailability();
 }
 
 function buildInterface() {
