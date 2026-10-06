@@ -1,3 +1,17 @@
+const animals = [
+  { name: "Собака", image: "assets/animals/dog.svg" },
+  { name: "Кошка", image: "assets/animals/cat.svg" },
+  { name: "Лиса", image: "assets/animals/fox.svg" },
+  { name: "Лев", image: "assets/animals/lion.svg" },
+  { name: "Панда", image: "assets/animals/panda.svg" },
+  { name: "Кролик", image: "assets/animals/rabbit.svg" },
+  { name: "Тигр", image: "assets/animals/tiger.svg" },
+  { name: "Медведь", image: "assets/animals/bear.svg" }
+];
+
+let gameBoard;
+let gameCards = [];
+
 function createElement(tagName, classNames, text) {
   const element = document.createElement(tagName);
 
@@ -18,6 +32,45 @@ function createElement(tagName, classNames, text) {
   return element;
 }
 
+function createCards() {
+  const cards = [];
+
+  for (let animalIndex = 0; animalIndex < animals.length; animalIndex += 1) {
+    for (let copyIndex = 0; copyIndex < 2; copyIndex += 1) {
+      cards.push({
+        name: animals[animalIndex].name,
+        image: animals[animalIndex].image
+      });
+    }
+  }
+
+  return cards;
+}
+
+function createCardButton(card) {
+  const button = createElement("button", "card");
+  const back = createElement("span", "card-back", "?");
+  const face = createElement("span", "card-face");
+  const image = createElement("img", "card-image");
+
+  button.type = "button";
+  button.setAttribute("aria-label", "Закрытая карточка");
+  image.src = card.image;
+  image.alt = card.name;
+  face.append(image);
+  button.append(back, face);
+
+  return button;
+}
+
+function renderCards() {
+  gameBoard.textContent = "";
+
+  for (let index = 0; index < gameCards.length; index += 1) {
+    gameBoard.append(createCardButton(gameCards[index]));
+  }
+}
+
 function buildInterface() {
   const gameRoot = createElement("main", "game");
   const header = createElement("header", "game-header");
@@ -31,7 +84,7 @@ function buildInterface() {
   const pairsLabel = createElement("p", "", "Пары: ");
   const pairsCount = createElement("span", "", "0");
   const pairTotal = createElement("span", "", " из 8");
-  const gameBoard = createElement("section", "game-board");
+  gameBoard = createElement("section", "game-board");
 
   newGameButton.type = "button";
   leaderboardButton.type = "button";
@@ -49,3 +102,5 @@ function buildInterface() {
 }
 
 buildInterface();
+gameCards = createCards();
+renderCards();
