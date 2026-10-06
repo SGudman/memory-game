@@ -9,8 +9,13 @@ const animals = [
   { name: "Медведь", image: "assets/animals/bear.svg" }
 ];
 
+let newGameButton;
+let movesCountElement;
+let pairsCountElement;
 let gameBoard;
 let gameCards = [];
+let movesCount = 0;
+let foundPairs = 0;
 
 function createElement(tagName, classNames, text) {
   const element = document.createElement(tagName);
@@ -32,7 +37,7 @@ function createElement(tagName, classNames, text) {
   return element;
 }
 
-function createCards() {
+function createShuffledCards() {
   const cards = [];
 
   for (let animalIndex = 0; animalIndex < animals.length; animalIndex += 1) {
@@ -42,6 +47,13 @@ function createCards() {
         image: animals[animalIndex].image
       });
     }
+  }
+
+  for (let index = cards.length - 1; index > 0; index -= 1) {
+    const randomIndex = Math.floor(Math.random() * (index + 1));
+    const temporaryCard = cards[index];
+    cards[index] = cards[randomIndex];
+    cards[randomIndex] = temporaryCard;
   }
 
   return cards;
@@ -71,29 +83,43 @@ function renderCards() {
   }
 }
 
+function updateStats() {
+  movesCountElement.textContent = String(movesCount);
+  pairsCountElement.textContent = String(foundPairs);
+}
+
+function startNewGame() {
+  movesCount = 0;
+  foundPairs = 0;
+  gameCards = createShuffledCards();
+  renderCards();
+  updateStats();
+}
+
 function buildInterface() {
   const gameRoot = createElement("main", "game");
   const header = createElement("header", "game-header");
   const title = createElement("h1", "game-title", "Игра на память");
   const actions = createElement("div", "game-actions");
-  const newGameButton = createElement("button", "button", "Новая игра");
+  newGameButton = createElement("button", "button", "Новая игра");
   const leaderboardButton = createElement("button", "button button-secondary", "Таблица лидеров");
   const stats = createElement("section", "game-stats");
   const movesLabel = createElement("p", "", "Ходы: ");
-  const movesCount = createElement("span", "", "0");
+  movesCountElement = createElement("span", "", "0");
   const pairsLabel = createElement("p", "", "Пары: ");
-  const pairsCount = createElement("span", "", "0");
+  pairsCountElement = createElement("span", "", "0");
   const pairTotal = createElement("span", "", " из 8");
   gameBoard = createElement("section", "game-board");
 
   newGameButton.type = "button";
   leaderboardButton.type = "button";
-  movesCount.id = "moves-count";
-  pairsCount.id = "pairs-count";
+  newGameButton.addEventListener("click", startNewGame);
+  movesCountElement.id = "moves-count";
+  pairsCountElement.id = "pairs-count";
   gameBoard.setAttribute("aria-label", "Игровое поле");
 
-  movesLabel.append(movesCount);
-  pairsLabel.append(pairsCount, pairTotal);
+  movesLabel.append(movesCountElement);
+  pairsLabel.append(pairsCountElement, pairTotal);
   stats.append(movesLabel, pairsLabel);
   actions.append(newGameButton, leaderboardButton);
   header.append(title, actions);
@@ -102,5 +128,4 @@ function buildInterface() {
 }
 
 buildInterface();
-gameCards = createCards();
-renderCards();
+startNewGame();
